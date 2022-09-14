@@ -2,6 +2,9 @@ package workshop.uart
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.fsm._
+
+// 滑动窗口采样异步信号，采样频率必须是信号频率的整数倍
 
 case class UartRxGenerics( preSamplingSize: Int = 1,
                            samplingSize: Int = 5,
@@ -14,6 +17,7 @@ case class UartRxGenerics( preSamplingSize: Int = 1,
     SpinalWarning(s"It's not nice to have a even samplingSize value at ${ScalaLocated.short} (because of the majority vote)")
 }
 
+// 系统是工作在 sample 的频率下
 case class UartCtrlRx(generics : UartRxGenerics) extends Component{
   import generics._  //Allow to directly use generics attribute without generics. prefix
   val io = new Bundle{
@@ -67,7 +71,48 @@ case class UartCtrlRx(generics : UartRxGenerics) extends Component{
   }
 
   // Statemachine that use all precedent area
-  val stateMachine = new Area {
-    //TODO state machine
+  val stateMachine = new StateMachine {
+    val IDLE  = new State with EntryPoint
+    val START = new State
+    val DATA  = new State
+    val STOP  = new State
+
+    val buffer = Reg(Bits(8 bits)) init (0)
+
+    io.read.payload := buffer
+    io.read.valid := False
+
+    IDLE.whenIsActive{
+      when(bitTimer.tick && !sampler.value) {
+        bitCounter.clear := True
+        goto(START)
+      }
+    }
+
+    START.whenIsActive{
+      //? buffer 赋值条件和 bitCounter 赋值条件一致
+      when(bitTimer.tick) {
+        buffer(bitCounter.value) := sampler.value
+
+        when(bitCounter.value === 7) {
+          goto(DATA)
+        }
+      }
+    }
+
+    DATA.whenIsActive {
+      //! 只能有效一周期
+      io.read.valid := True
+      
+      goto(STOP)
+    }
+
+    STOP.whenIsActive {
+      when(bitTimer.tick && !sampler.value) {
+          bitCounter.clear := True
+          goto(START)
+      }
+    }
+
   }
 }

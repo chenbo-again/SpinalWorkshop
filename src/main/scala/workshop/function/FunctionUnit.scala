@@ -14,12 +14,13 @@ case class FunctionUnit() extends Component{
 
   def patternDetector(str : String) = new Area{
     val hit = False
+    
     // TODO
   }
 
   def valueLoader(start : Bool,that : Data)= new Area{
     require(widthOf(that) % widthOf(io.cmd.payload) == 0) //You can make the assumption that the 'that' width is always an mulitple of 8
-    // TODO
+    
   }
 
   val setA    = patternDetector("setValueA")

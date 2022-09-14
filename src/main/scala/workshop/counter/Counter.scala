@@ -9,5 +9,13 @@ case class Counter(width: Int) extends Component {
     val full     = out Bool()
   }
 
-  //TODO define the logic
+  val _val = Reg(UInt(width bits)) init 0
+  _val := _val + 1
+  when(io.clear) {
+    _val := 0
+  }
+  
+  io.full := _val === ((1<<width) - 1)
+  io.value := _val
+  
 }
